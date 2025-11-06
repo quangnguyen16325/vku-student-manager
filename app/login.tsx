@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import {
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  Image,
-  StyleSheet,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -19,16 +19,19 @@ export default function Login() {
   const [password, setPassword] = useState("");
 
   const handleLogin = async () => {
-    if (!email.endsWith("@vku.udn.vn")) {
+    if (!email.trim().endsWith("@vku.udn.vn")) {
       Alert.alert("Email không hợp lệ", "Vui lòng sử dụng email @vku.udn.vn");
       return;
     }
 
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password.trim());
-      router.replace("/admin");
-    } catch {
-      Alert.alert("Đăng nhập thất bại", "Tài khoản hoặc mật khẩu không đúng.");
+      router.replace("/dashboard");
+    } catch (error: any) {
+      Alert.alert(
+        "Đăng nhập thất bại",
+        error?.message ?? "Tài khoản hoặc mật khẩu không đúng"
+      );
     }
   };
 
@@ -38,14 +41,14 @@ export default function Login() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <Image
-        source={require("../assets/images/vku_logo.png")} 
+        source={require("../assets/images/vku_logo.png")}
         style={styles.logo}
         resizeMode="contain"
       />
 
       <Text style={styles.title}>Đăng nhập Admin</Text>
       <Text style={styles.subtitle}>
-        Quản lý thông tin sinh viên VKU - Phân hệ quản trị
+        Quản lý thông tin sinh viên VKU
       </Text>
 
       <TextInput
@@ -70,7 +73,7 @@ export default function Login() {
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => router.replace("/")}>
-        <Text style={styles.backText}>← Quay lại trang chào</Text>
+        <Text style={styles.backText}>Quay lại trang chào</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
   );
@@ -133,9 +136,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     letterSpacing: 0.5,
   },
+  linkWrapper: {
+    marginTop: 18,
+  },
+  linkText: {
+    color: "#0055a5",
+    fontSize: 13,
+    textAlign: "center",
+  },
   backText: {
     color: "#5c6b8a",
     marginTop: 20,
     fontSize: 13,
   },
 });
+

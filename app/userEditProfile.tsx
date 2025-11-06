@@ -1,23 +1,31 @@
 import React, { useEffect, useState } from "react";
 import {
-  TextInput,
+  ActivityIndicator,
   Alert,
   Image,
+  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
-  ActivityIndicator,
-  ScrollView,
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  updateDoc,
+  where,
+} from "firebase/firestore";
 import { db } from "../config/firebaseConfig";
-import { doc, getDoc, updateDoc, getDocs, collection, query, where } from "firebase/firestore";
 import { uploadImage } from "../config/cloudinary";
 import FontAwesome from "@expo/vector-icons/build/FontAwesome";
 
-export default function EditStudent() {
+export default function UserEditProfile() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
@@ -26,24 +34,36 @@ export default function EditStudent() {
   const [password, setPassword] = useState("");
   const [imageUrl, setImageUrl] = useState<string>("");
   const [localUri, setLocalUri] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const fetchOne = async () => {
-      const ref = doc(db, "students", id as string);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        const d = snap.data() as any;
-        setUsername(d.username || "");
-        setEmail(d.email || "");
-        setPassword(d.password || "");
-        setImageUrl(d.image || "");
-      } else {
-        Alert.alert("Lỗi", "Không tìm thấy sinh viên!");
-        router.back();
+    const fetchStudent = async () => {
+      if (!id) return;
+      try {
+        const ref = doc(db, "students", id);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const data = snap.data() as any;
+          setUsername(data.username || "");
+          setEmail(data.email || "");
+          setPassword(data.password || "");
+          setImageUrl(data.image || "");
+        } else {
+          Alert.alert("Không tìm thấy", "Tài khoản không tồn tại", [
+            { text: "OK", onPress: () => router.replace("/userLogin") },
+          ]);
+        }
+      } catch (error: any) {
+        Alert.alert("Lỗi", error?.message ?? "Không thể tải thông tin", [
+          { text: "OK", onPress: () => router.replace("/userLogin") },
+        ]);
+      } finally {
+        setLoading(false);
       }
     };
-    if (id) fetchOne();
+
+    fetchStudent();
   }, [id]);
 
   const pickImage = async () => {
@@ -52,68 +72,88 @@ export default function EditStudent() {
       quality: 1,
       allowsEditing: true,
     });
-    if (!res.canceled) setLocalUri(res.assets[0].uri);
+    if (!res.canceled) {
+      setLocalUri(res.assets[0].uri);
+    }
   };
 
-  const onUpdate = async () => {
+  const handleUpdate = async () => {
     const trimmedName = username.trim();
     const trimmedEmail = email.trim().toLowerCase();
+    const trimmedPassword = password.trim();
 
-    if (!trimmedName || !trimmedEmail) {
-      return Alert.alert("Thiếu thông tin", "Vui lòng nhập Username và Email");
+    if (!trimmedName || !trimmedEmail || !trimmedPassword) {
+      Alert.alert("Thiếu thông tin", "Vui lòng nhập đầy đủ Username, Email và Mật khẩu");
+      return;
     }
 
     if (!trimmedEmail.endsWith("@vku.udn.vn")) {
-      Alert.alert("Email không hợp lệ", "Email phải có đuôi @vku.udn.vn");
+      Alert.alert("Email không hợp lệ", "Email phải thuộc tên miền @vku.udn.vn");
       return;
     }
 
     try {
       setSaving(true);
 
-       const usernameQuery = query(
-        collection(db, "students"),
-        where("username", "==", trimmedName)
+      const usernameSnap = await getDocs(
+        query(collection(db, "students"), where("username", "==", trimmedName))
       );
-      const usernameSnap = await getDocs(usernameQuery);
-
-      const usernameConflict = usernameSnap.docs.some((d) => d.id !== id);
+      const usernameConflict = usernameSnap.docs.some((docSnap) => docSnap.id !== id);
       if (usernameConflict) {
-        Alert.alert("Tên người dùng đã tồn tại", "Vui lòng nhập username khác!");
+        Alert.alert("Username đã tồn tại", "Vui lòng chọn username khác");
         setSaving(false);
         return;
       }
 
-      const emailQuery = query(collection(db, "students"), where("email", "==", trimmedEmail));
-      const emailSnap = await getDocs(emailQuery);
-
-      const emailConflict = emailSnap.docs.some((d) => d.id !== id);
+      const emailSnap = await getDocs(
+        query(collection(db, "students"), where("email", "==", trimmedEmail))
+      );
+      const emailConflict = emailSnap.docs.some((docSnap) => docSnap.id !== id);
       if (emailConflict) {
-        Alert.alert("Email đã tồn tại", "Vui lòng sử dụng email khác!");
+        Alert.alert("Email đã đăng ký", "Vui lòng sử dụng email khác");
         setSaving(false);
         return;
       }
 
       let finalImage = imageUrl;
       if (localUri) {
-        finalImage = await uploadImage(localUri, email);
+        finalImage = await uploadImage(localUri, trimmedEmail);
       }
 
       await updateDoc(doc(db, "students", id as string), {
-        username: username.trim(),
-        email: email.trim(),
-        password,
+        username: trimmedName,
+        email: trimmedEmail,
+        password: trimmedPassword,
         image: finalImage,
       });
 
-      Alert.alert("Thành công", "Đã cập nhật thông tin sinh viên!");
-      router.push("/admin");
-    } catch (e: any) {
-      Alert.alert("Lỗi", e?.message ?? "Không thể cập nhật");
+      setUsername(trimmedName);
+      setEmail(trimmedEmail);
+      setPassword(trimmedPassword);
+      setImageUrl(finalImage);
+      setLocalUri(null);
+
+      Alert.alert("Cập nhật thành công", "Thông tin đã được lưu", [
+        {
+          text: "Xem thông tin",
+          onPress: () =>
+            router.replace({ pathname: "/userProfile", params: { id: id as string } }),
+        },
+      ]);
+    } catch (error: any) {
+      Alert.alert("Cập nhật thất bại", error?.message ?? "Vui lòng thử lại sau");
     } finally {
       setSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0055a5" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -123,20 +163,21 @@ export default function EditStudent() {
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.headerTitle}>Chỉnh sửa tài khoản</Text>
+        <Text style={styles.headerTitle}>Chỉnh sửa thông tin</Text>
       </View>
+
       <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
         {localUri ? (
-          <Image source={{ uri: localUri }} style={styles.preview} />
+          <Image source={{ uri: localUri }} style={styles.avatar} />
         ) : (
           <Image
             source={{
               uri: imageUrl || "https://placehold.co/200x200?text=No+Img",
             }}
-            style={styles.preview}
+            style={styles.avatar}
           />
         )}
-        <Text style={styles.changeText}>＋ Chọn ảnh mới</Text>
+        <Text style={styles.changeText}>Chọn ảnh mới</Text>
       </TouchableOpacity>
 
       <TextInput
@@ -145,48 +186,60 @@ export default function EditStudent() {
         value={username}
         onChangeText={setUsername}
       />
+
       <TextInput
         style={styles.input}
-        placeholder="Email"
+        placeholder="Email @vku.udn.vn"
         autoCapitalize="none"
         keyboardType="email-address"
         value={email}
         onChangeText={setEmail}
       />
+
       <TextInput
         style={styles.input}
         placeholder="Mật khẩu"
-        // secureTextEntry
+        secureTextEntry
         value={password}
         onChangeText={setPassword}
       />
 
       <TouchableOpacity
-        style={[styles.saveBtn, saving && { opacity: 0.7 }]}
-        onPress={onUpdate}
+        style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+        onPress={handleUpdate}
         disabled={saving}
       >
-          <FontAwesome name="cloud-upload" size={20} color="#fff" />
+        <FontAwesome name="cloud-upload" size={20} color="#fff" />
         {saving ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.saveText}>Cập nhật tài khoản</Text>
+          <Text style={styles.saveText}>Lưu thay đổi</Text>
         )}
       </TouchableOpacity>
+
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f7f9fc",
+  },
   container: {
     flexGrow: 1,
     backgroundColor: "#f7f9fc",
+    alignItems: "center",
     paddingHorizontal: 20,
+    paddingBottom: 40,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 20,
+    marginTop: 0,
   },
   logo: {
     width: 40,
@@ -194,16 +247,15 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     color: "#1f2d5a",
-    flexShrink: 1,
   },
   imagePicker: {
     alignItems: "center",
     marginBottom: 20,
   },
-  preview: {
+  avatar: {
     width: 200,
     height: 200,
     borderRadius: 15,
@@ -214,7 +266,7 @@ const styles = StyleSheet.create({
   changeText: {
     color: "#0055a5",
     marginTop: 8,
-    fontWeight: "bold",
+    fontWeight: "600",
   },
   input: {
     width: "100%",
@@ -226,31 +278,36 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginBottom: 12,
   },
-  saveBtn: {
+  saveButton: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#0055a5",
     paddingVertical: 14,
     borderRadius: 30,
-    width: "100%",
-    marginTop: 10,
+    width: "90%",
+    alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 5,
+    elevation: 4,
+    marginTop: 10,
+  },
+  saveButtonDisabled: {
+    opacity: 0.7,
   },
   saveText: {
     color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
     letterSpacing: 0.5,
-    paddingLeft: 8,
+    marginLeft: 5,
   },
-  backText: {
+  cancelButton: {
+    marginTop: 18,
+  },
+  cancelText: {
     color: "#5c6b8a",
-    marginTop: 20,
     fontSize: 13,
   },
 });

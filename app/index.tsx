@@ -16,11 +16,24 @@ export default function Index() {
       <Text style={styles.title}>VKU Student Manager</Text>
 
       <Text style={styles.subtitle}>
-        Ứng dụng quản lý tài khoản sinh viên VKU
+        Ứng dụng hỗ trợ quản lý tài khoản sinh viên VKU
       </Text>
 
-      <TouchableOpacity style={styles.button} onPress={() => router.push("/dashboard")}>
-        <Text style={styles.buttonText}>BẮT ĐẦU</Text>
+      <TouchableOpacity style={styles.button} onPress={() => router.push("/login")}>
+        <Text style={styles.buttonText}>Đăng nhập Admin</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.button, styles.secondaryButton]}
+        onPress={() => router.push("/userLogin")}
+      >
+        <Text style={[styles.buttonText, styles.secondaryButtonText]}>
+          Đăng nhập Sinh viên
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.linkWrapper} onPress={() => router.push("/register")}>
+        <Text style={styles.linkText}>Sinh viên mới? Đăng ký tài khoản</Text>
       </TouchableOpacity>
 
       <Text style={styles.footer}>Developed by Nguyễn Ngọc Quang</Text>
@@ -65,12 +78,32 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 5,
+    width: "80%",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  secondaryButton: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#0055a5",
   },
   buttonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
-    letterSpacing: 1,
+    letterSpacing: 0.5,
+  },
+  secondaryButtonText: {
+    color: "#0055a5",
+  },
+  linkWrapper: {
+    marginTop: 10,
+  },
+  linkText: {
+    color: "#0055a5",
+    fontSize: 13,
+    textAlign: "center",
+    textDecorationLine: "underline",
   },
   footer: {
     position: "absolute",
@@ -80,3 +113,4 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 });
+

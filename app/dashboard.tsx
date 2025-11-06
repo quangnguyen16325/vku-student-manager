@@ -13,6 +13,7 @@ import { db, auth } from "../config/firebaseConfig";
 import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
 import { FontAwesome5, MaterialIcons } from "@expo/vector-icons";
+import ChatBubble from "../components/ChatBubble";
 
 export default function Dashboard() {
   const [totalStudents, setTotalStudents] = useState<number | null>(null);
@@ -50,6 +51,7 @@ export default function Dashboard() {
         />
         <Text style={styles.headerTitle}>VKU Student Manager</Text>
       </View>
+      <ChatBubble />
 
       <Text style={styles.subHeader}>BẢNG ĐIỀU KHIỂN</Text>
 
@@ -82,7 +84,6 @@ export default function Dashboard() {
   );
 }
 
-// 🎨 Style tinh chỉnh UI hiện đại
 const styles = StyleSheet.create({
   container: {
     flex: 1,

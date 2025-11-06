@@ -1,61 +1,57 @@
 import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-  Alert,
   ActivityIndicator,
+  Alert,
+  Image,
   ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "../config/firebaseConfig";
-import { doc, getDoc, deleteDoc } from "firebase/firestore";
-import { MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
+import { FontAwesome5, MaterialIcons } from "@expo/vector-icons";
+import ChatBubble from "@/components/ChatBubble";
 
-export default function ViewStudent() {
+type Student = {
+  username: string;
+  email: string;
+  password?: string;
+  image?: string;
+};
+
+export default function UserProfile() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-
-  const [student, setStudent] = useState<any>(null);
+  const [student, setStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStudent = async () => {
+      if (!id) return;
       try {
-        const ref = doc(db, "students", id as string);
+        const ref = doc(db, "students", id);
         const snap = await getDoc(ref);
         if (snap.exists()) {
-          setStudent(snap.data());
+          setStudent(snap.data() as Student);
         } else {
-          Alert.alert("Lỗi", "Không tìm thấy sinh viên này!");
-          router.back();
+          Alert.alert("Không tìm thấy", "Tài khoản không tồn tại", [
+            { text: "OK", onPress: () => router.replace("/userLogin") },
+          ]);
         }
-      } catch (error) {
-        console.error(error);
-        Alert.alert("Lỗi", "Không thể tải thông tin sinh viên");
+      } catch (error: any) {
+        Alert.alert("Lỗi", error?.message ?? "Không thể tải thông tin", [
+          { text: "OK", onPress: () => router.replace("/userLogin") },
+        ]);
       } finally {
         setLoading(false);
       }
     };
-    if (id) fetchStudent();
-  }, [id]);
 
-  const onDelete = async () => {
-    Alert.alert("Xác nhận", "Bạn có chắc muốn xóa sinh viên này?", [
-      { text: "Hủy", style: "cancel" },
-      {
-        text: "Xóa",
-        style: "destructive",
-        onPress: async () => {
-          await deleteDoc(doc(db, "students", id as string));
-          Alert.alert("Đã xóa sinh viên!");
-          router.replace("/admin");
-        },
-      },
-    ]);
-  };
+    fetchStudent();
+  }, [id]);
 
   if (loading) {
     return (
@@ -65,7 +61,17 @@ export default function ViewStudent() {
     );
   }
 
-  if (!student) return null;
+  if (!student) {
+    return null;
+  }
+
+  const goToEdit = () => {
+    router.push({ pathname: "/userEditProfile", params: { id: id as string } });
+  };
+
+  const onLogout = () => {
+    router.replace("/userLogin");
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -75,7 +81,7 @@ export default function ViewStudent() {
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.headerTitle}>Thông tin chi tiết</Text>
+        <Text style={styles.headerTitle}>Thông tin tài khoản</Text>
       </View>
 
       <Image
@@ -91,36 +97,37 @@ export default function ViewStudent() {
           <Text style={styles.label}>  Username:</Text>
           <Text style={styles.value}>{student.username}</Text>
         </View>
-        
+
         <View style={styles.row}>
           <MaterialIcons name="email" size={18} color="#0055a5" />
           <Text style={styles.label}>  Email:</Text>
           <Text style={styles.value}>{student.email}</Text>
         </View>
-        
 
-        <View style={styles.row}>
-          <FontAwesome5 name="lock" size={18} color="#0055a5" />
-          <Text style={styles.label}>  Mật khẩu:</Text>
-          <Text style={styles.value}>{student.password}</Text>
-        </View>
-        
+        {student.password ? (
+          <View style={styles.row}>
+            <FontAwesome5 name="lock" size={18} color="#0055a5" />
+            <Text style={styles.label}>  Mật khẩu:</Text>
+            <Text style={styles.value}>{student.password}</Text>
+          </View>
+        ) : null}
       </View>
 
-      <View style={styles.btnGroup}>
-        <TouchableOpacity
-          style={[styles.btn, styles.editBtn]}
-          onPress={() => router.push({ pathname: "/editStudent", params: { id } })}
-        >
-          <MaterialIcons name="edit" size={20} color="#fff" />
-          <Text style={styles.btnText}>  Sửa thông tin</Text>
-        </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.button, styles.editButton]}
+        onPress={goToEdit}
+      >
+        <MaterialIcons name="edit" size={18} color="#0055a5" />
+        <Text style={[styles.buttonText, styles.editButtonText]}>Chỉnh sửa thông tin</Text>
+      </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.btn, styles.deleteBtn]} onPress={onDelete}>
-          <MaterialIcons name="delete" size={20} color="#fff" />
-          <Text style={styles.btnText}>  Xóa sinh viên</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity style={styles.button} onPress={onLogout}>
+        <MaterialIcons name="logout" size={22} color="#fff" />
+        <Text style={styles.buttonText}>Đăng xuất</Text>
+      </TouchableOpacity>
+
+      <ChatBubble />
+      
     </ScrollView>
   );
 }
@@ -130,17 +137,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#f7f9fc",
   },
   container: {
     flexGrow: 1,
     backgroundColor: "#f7f9fc",
     alignItems: "center",
     paddingHorizontal: 20,
+    paddingBottom: 40,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 20,
+    marginTop: 50,
   },
   logo: {
     width: 40,
@@ -166,6 +176,9 @@ const styles = StyleSheet.create({
     width: "100%",
     padding: 20,
     elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 4 },
     marginBottom: 20,
   },
   row: {
@@ -183,33 +196,37 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     color: "#5c6b8a",
     fontSize: 14,
-
   },
-  btnGroup: {
-    width: "100%",
-    alignItems: "center",
-    gap: 12,
-  },
-  btn: {
+  button: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "center",
-    width: "90%",
+    backgroundColor: "#0055a5",
     paddingVertical: 14,
+    paddingHorizontal: 40,
     borderRadius: 30,
+    width: "90%",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+    marginTop: 10,
   },
-  editBtn: {
-    backgroundColor: "#3498db",
-  },
-  deleteBtn: {
-    backgroundColor: "#e74c3c",
-  },
-  backBtn: {
-    backgroundColor: "#7f8c8d",
-  },
-  btnText: {
+  buttonText: {
     color: "#fff",
     fontWeight: "bold",
-    fontSize: 15,
+    fontSize: 16,
+    letterSpacing: 0.5,
+    marginLeft: 5,
+  },
+  editButton: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#0055a5",
+  },
+  editButtonText: {
+    color: "#0055a5",
   },
 });
+

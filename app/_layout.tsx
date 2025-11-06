@@ -5,6 +5,10 @@ export default function RootLayout() {
     <Stack screenOptions={{ headerTitleAlign: "center" }}>
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="register" options={{ headerShown: false }} />
+      <Stack.Screen name="userLogin" options={{ headerShown: false }} />
+      <Stack.Screen name="userProfile" options={{ headerShown: false }} />
+      <Stack.Screen name="userEditProfile" options={{ title: "", headerBackTitle: "Quay lại ", headerShadowVisible: false, headerStyle: { backgroundColor: '#f7f9fc' } }} />
       <Stack.Screen name="dashboard" options={{ headerShown: false }} />
       <Stack.Screen name="admin" options={{ title: "", headerBackTitle: "Quay lại ", headerShadowVisible: false, headerStyle: { backgroundColor: '#f7f9fc' } }} />
       <Stack.Screen name="addStudent" options={{ title: "", headerBackTitle: "Quay lại ", headerShadowVisible: false, headerStyle: { backgroundColor: '#f7f9fc' } }} />

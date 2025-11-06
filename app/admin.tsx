@@ -11,8 +11,7 @@ import {
   TextInput,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { auth, db } from "../config/firebaseConfig";
-import { signOut } from "firebase/auth";
+import { db } from "../config/firebaseConfig";
 import { collection, onSnapshot, doc, deleteDoc, query, orderBy } from "firebase/firestore";
 import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 
@@ -74,29 +73,10 @@ export default function Admin() {
     ]);
   };
 
-  // const onLogout = async () => {
-  //   Alert.alert("Xác nhận", "Bạn có chắc muốn đăng xuất?", [
-  //     { text: "Hủy", style: "cancel" },
-  //     {
-  //       text: "Đăng xuất",
-  //       style: "destructive",
-  //       onPress: async () => {
-  //         await signOut(auth);
-  //         Alert.alert("Đã đăng xuất!");
-  //         router.replace("/login");
-  //       },
-  //     },
-  //   ]);
-  // };
+
 
   const renderStudent = ({ item }: { item: Student }) => (
     <View style={styles.card}>
-      {/* <Image
-        source={{
-          uri: item.image || "https://placehold.co/100x100?text=No+Img",
-        }}
-        style={styles.avatar}
-      /> */}
       <TouchableOpacity
         onPress={() =>
           router.push({ pathname: "/viewStudent", params: { id: item.id } })
@@ -152,10 +132,6 @@ export default function Admin() {
         >
           <Text style={styles.addBtnText}>＋ Thêm tài khoản</Text>
         </TouchableOpacity>
-
-        {/* <TouchableOpacity style={styles.logoutBtn} onPress={onLogout}>
-          <Text style={styles.logoutText}>⎋ Đăng xuất</Text>
-        </TouchableOpacity> */}
       </View>
 
       <View style={styles.searchBar}>
